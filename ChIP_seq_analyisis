@@ -1,0 +1,47 @@
+##########################################################################################################################################################
+#### Read mapping
+##########################################################################################################################################################
+
+#### Donor 1
+for fastq in hPMN_UT_6h_ChIP_H3K27ac_D1 hPMN_R848_6h_ChIP_H3K27ac_D1 hPMN_UT_20h_ChIP_H3K27ac_D1 hPMN_R848_20h_ChIP_H3K27ac_D1 hPMN_UT_20h_ChIP_CEBPB_D1 \
+             hPMN_R848_20h_ChIP_CEBPb_D1 hPMN_UT_20h_ChIP_PU.1_D1 hPMN_R848_20h_ChIP_PU.1_D1 hPMN_UT_20h_ChIP_OCT2_D1 hPMN_R848_20h_ChIP_OCT2_D1 \
+             hMONO_UT_20h_ChIP_OCT2_D1 hMONO_R848_20h_ChIP_OCT2_D1; do
+
+  index=genome
+  chrM=chrM_hg38.bed
+  blackList=ENCFF419RSJ_hg38.blacklist.bed
+  #### Trim and map reads
+  trim_galore ${fastq}.fastq.gz --gzip
+  bowtie2 --threads 8 -x $index -U ${fastq}.fastq.gz --time| samtools view -bS | samtools sort -@ 8 -o ${fastq}_sorted.bam
+
+  #### Remove non-mappers and mul3-mappers (samtools) 
+  samtools view -h ${fastq}_sorted.bam -F 4 -q 10 | samtools view -S -b - | samtools sort -@ 8 -o ${fastq}_sorted_mapped.bam
+  #### Remove duplicated reads
+  sambamba markdup -r ${fastq}_sorted_mapped.bam ${fastq}_sorted_mapped_rmdup.bam -t 8
+  ### Remove reads mapping to mitochondrial chromosome and black list regions
+  bedtools intersect -abam ${fastq}_sorted_mapped_rmdup.bam -b $chrM -v | samtools sort -@ 8 -o ${fastq}_sorted_mapped_rmdup_noChrM.bam
+  bedtools intersect -abam ${fastq}_sorted_mapped_rmdup_noChrM.bam -b $blackList -v | samtools sort -@ 8 -o ${fastq}_sorted_mapped_rmdup_noChrM_noBlackList_ENCFF419RSJ.bam
+done
+
+### Donor 2
+for fastq in hPMN_UT_6h_ChIP_H3K27ac_D2 hPMN_R848_6h_ChIP_H3K27ac_D2 hPMN_UT_20h_ChIP_H3K27ac_D2 hPMN_R848_20h_ChIP_H3K27ac_D2 hPMN_UT_20h_ChIP_CEBPB_D2 \
+             hPMN_R848_20h_ChIP_CEBPb_D2 hPMN_UT_20h_ChIP_PU.1_D2 hPMN_R848_20h_ChIP_PU.1_D2 hPMN_UT_20h_ChIP_OCT2_D2 hPMN_R848_20h_ChIP_OCT2_D2 \ 
+             hMONO_UT_20h_ChIP_OCT2_D2 hMONO_R848_20h_ChIP_OCT2_D2; do
+
+  index=genome
+  chrM=chrM_hg38.bed
+  blackList=ENCFF419RSJ_hg38.blacklist.bed
+  #### Trim and map reads
+  trim_galore ${fastq}.fastq.gz --gzip
+  gunzip -c ${fastq}.fq.gz | fastx_trimmer -l 51 -z -o ${fastq}_51bp.fq.gz -Q33
+  bowtie2 --threads 8 -x $index -U ${fastq}_51bp.fq.gz --time| samtools view -bS | samtools sort -@ 8 -o ${fastq}_51bp_sorted.bam
+
+  #### Remove non-mappers and mul3-mappers (samtools) 
+  samtools view -h ${fastq}_51bp_sorted.bam -F 4 -q 10 | samtools view -S -b - | samtools sort -@ 8 -o ${fastq}_51bp_sorted_mapped.bam
+  #### Remove duplicated reads
+  sambamba markdup -r ${fastq}_51bp_sorted_mapped.bam ${fastq}_51bp_sorted_mapped_rmdup.bam -t 8
+  ### Remove reads mapping to mitochondrial chromosome and black list regions
+  bedtools intersect -abam ${fastq}_51bp_sorted_mapped_rmdup.bam -b $chrM -v | samtools sort -@ 8 -o ${fastq}_51bp_sorted_mapped_rmdup_noChrM.bam
+  bedtools intersect -abam ${fastq}_51bp_sorted_mapped_rmdup_noChrM.bam -b $blackList -v | samtools sort -@ 8 -o ${fastq}_51bp_sorted_mapped_rmdup_noChrM_noBlackList_ENCFF419RSJ.bam
+done
+
